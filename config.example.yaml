@@ -16,11 +16,28 @@ refresh_sec: 15
 # Number of nearest aircraft to display.
 top_n: 8
 
+# Seconds between page rotations when there are more aircraft than fit on one
+# screen (4 rows). Ignored with <= 4 aircraft.
+rotate_sec: 8
+
 # Data source base URL. Point at a mirror if you run one.
 source_url: "https://api.airplanes.live"
 
-# Optional BDF/TTF font path; omit to use Pillow's built-in bitmap font.
-# font: "src/flight_board/fonts/spleen-5x8.bdf"
+# Fonts. A bare filename is looked up in the bundled fonts/ directory first,
+# then treated as a filesystem path. Omit to use Pillow's built-in bitmap font.
+# Bundled: tom-thumb.bdf (3x5), 4x6.bdf, 5x8.bdf.
+font_main: "5x8.bdf"        # callsigns
+font_compact: "tom-thumb.bdf"  # altitude / distance column
+
+# Colors as [r, g, b] (0-255) or "#rrggbb".
+colors:
+  callsign: [255, 255, 255]  # white
+  alt: [0, 180, 80]          # muted green
+  dist: [255, 170, 0]        # amber
+  error: [255, 0, 0]         # stale-data dot
+
+# Draw a 1 px red corner dot when the last poll failed (data is stale).
+error_indicator: true
 
 # Frames per second for horizontal scrolling between fetches.
 scroll_fps: 20

@@ -75,6 +75,18 @@ All knobs live in `config.yaml` (copy of `config.example.yaml`): observer
 `lat`/`lon`, `distance_km`, `refresh_sec`, `top_n`, `source_url`, panel
 `rows`/`cols`/`chain`, `brightness`, and `gpio_slowdown`.
 
+## Fonts
+
+Bundled bitmap fonts under `src/flight_board/fonts/` (via
+[rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix)):
+
+- **tom-thumb.bdf** (3×5) — © Brian Swetland / Robey Pointer, **MIT**.
+- **5x8.bdf**, **4x6.bdf** — Markus Kuhn's misc-fixed, **public domain**
+  ("Public domain font. Share and enjoy.").
+
+A bare filename in `config.yaml`'s `font_main` / `font_compact` is resolved from
+this bundled directory first, then as a filesystem path.
+
 ## License
 
 Not yet chosen — add a `LICENSE` of your choice.

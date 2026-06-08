@@ -81,15 +81,22 @@ class MatrixRenderer(Renderer):
 
 
 class MockRenderer(Renderer):
-    """Host-side renderer that records draw calls for assertions in tests."""
+    """Host-side renderer that records draw calls for assertions in tests.
+
+    ``calls`` keeps a lightweight ``(kind, payload)`` log (payload is the image
+    size for ``set_image``); ``images`` keeps full copies of every staged frame
+    so tests can compare pixels across frames (e.g. that scrolling moves text).
+    """
 
     def __init__(self, width: int = 128, height: int = 64) -> None:
         self.width = width
         self.height = height
         self.calls: list[tuple[str, Any]] = []
+        self.images: list[Image.Image] = []
 
     def set_image(self, image: Image.Image) -> None:
         self.calls.append(("set_image", image.size))
+        self.images.append(image.copy())
 
     def swap(self) -> None:
         self.calls.append(("swap", None))
