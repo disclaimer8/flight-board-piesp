@@ -1,25 +1,34 @@
 # flight-board-piesp — conventions
 
-Live flight board: Raspberry Pi Zero W 1.1 (armv6l) + one HUB75 64×128 LED
-matrix. Polls airplanes.live, ranks nearest aircraft by distance, scrolls them
-on the panel. See [README.md](README.md) and [docs/hardware.md](docs/hardware.md).
+Live flight board: the nearest aircraft on a HUB75 64×128 LED matrix. Polls
+airplanes.live, ranks by distance, renders a 4-row scrolling layout. **Two
+implementations of the same behaviour:**
 
-## Architecture
+- **`pi/`** — Raspberry Pi Zero W 1.1 (armv6l), Python 3.9+, hzeller
+  rpi-rgb-led-matrix. The conventions below are about this subproject.
+- **`esp32/`** — ESP-WROOM-32 DevKit, C++/Arduino, PlatformIO, mrfaptastic
+  ESP32-HUB75-MatrixPanel-DMA. Mirrors the Pi logic (`source` / `nearest` /
+  `layout`); compile-time `config.h` + `secrets.h` instead of YAML.
+
+See [README.md](README.md) (overview + comparison) and
+[docs/hardware.md](docs/hardware.md) (shared panel/power).
+
+## Architecture (pi/)
 
 Pure, host-testable logic + a thin hardware layer (mirrors the `flight-radar-esp32`
 sibling's "pure core + thin Arduino" split):
 
-- `src/flight_board/source.py` — airplanes.live HTTP + `Aircraft` dataclass.
+- `pi/src/flight_board/source.py` — airplanes.live HTTP + `Aircraft` dataclass.
   URL is `/v2/point/{lat}/{lon}/{radius_nm}` (radius nautical miles, ceil of km).
-- `src/flight_board/nearest.py` — haversine + top-N. **Single pass**: distance
+- `pi/src/flight_board/nearest.py` — haversine + top-N. **Single pass**: distance
   is computed once per aircraft, stored on `dist_km`, and reused as the sort key.
-- `src/flight_board/renderer.py` — abstract `Renderer`; `MatrixRenderer` (real,
+- `pi/src/flight_board/renderer.py` — abstract `Renderer`; `MatrixRenderer` (real,
   wraps `rgbmatrix`) and `MockRenderer` (records draw calls). **`rgbmatrix` is
   imported lazily** inside `MatrixRenderer`/`build_matrix_options` so every other
   module imports cleanly on a host with no panel.
-- `src/flight_board/layout.py` — PIL composition, one row per aircraft, scroll
+- `pi/src/flight_board/layout.py` — PIL composition, one row per aircraft, scroll
   for over-wide rows, double-buffered (`set_image` then `swap`).
-- `src/flight_board/main.py` — argparse, YAML config, poll/render loop, SIGTERM.
+- `pi/src/flight_board/main.py` — argparse, YAML config, poll/render loop, SIGTERM.
 
 ## Code style
 
@@ -37,9 +46,12 @@ sibling's "pure core + thin Arduino" split):
 - Display tests use `MockRenderer` and assert on its recorded `calls`.
 - `source.py` tests mock HTTP with `responses` — **no real network**.
 - `nearest.py` tests are pure math.
-- Run: `pytest -q` and `ruff check .` (this is exactly what CI runs).
+- Run from `pi/`: `pytest -q` and `ruff check .` (this is exactly what
+  `pi-ci.yml` runs).
 - `rgbmatrix` is **never** a CI/pip dependency — it is built on the Pi via
   `scripts/install.sh` only.
+- ESP32 CI (`esp32-ci.yml`) is a PlatformIO `pio run -e esp32dev` compile;
+  `secrets.h` is created from `secrets.h.example` in CI (real one is gitignored).
 
 ## Don't block the render path
 

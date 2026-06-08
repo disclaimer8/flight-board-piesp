@@ -1,91 +1,48 @@
 # flight-board-piesp
 
-A live **flight board** for a **Raspberry Pi Zero W 1.1** driving one **HUB75
-64×128 RGB LED matrix**. It polls [airplanes.live](https://airplanes.live) for
-aircraft near a fixed observer location, ranks them by distance, and scrolls the
-nearest few across the panel — callsign, altitude, ground speed, distance, and
-track.
+Two implementations of the **same flight board** — a live display of the nearest
+aircraft on a **HUB75 64×128 RGB LED matrix**. Both poll
+[airplanes.live](https://airplanes.live) for traffic near a fixed observer,
+rank it by distance, and render the closest few (callsign, altitude, distance,
+heading) in a 4-row layout with a scrolling callsign and page rotation.
 
-Sibling project: [`flight-radar-esp32`](https://github.com/disclaimer8) — the
-same airplanes.live data source on an ESP32-S3 round LCD.
+The two share the data model and behaviour but target very different hardware:
 
-## How it works
+| | **Pi** ([`pi/`](pi/)) | **ESP32** ([`esp32/`](esp32/)) |
+| --- | --- | --- |
+| Controller | Raspberry Pi Zero W 1.1 (armv6l) | ESP-WROOM-32 DevKit |
+| OS | Raspberry Pi OS (Linux) | none (bare-metal / Arduino) |
+| Language | Python 3.9+ | C++ (Arduino) |
+| Build/deploy | `pip` + `scripts/install.sh` | PlatformIO (`pio run -t upload`) |
+| Panel driver | [hzeller/rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) | [mrfaptastic ESP32-HUB75-MatrixPanel-DMA](https://github.com/mrcodetastic/ESP32-HUB75-MatrixPanel-DMA) |
+| JSON | stdlib + `requests` | ArduinoJson (streamed) |
+| Wiring | via adapter board (level-shifted) | direct 3.3 V GPIO → HUB75 |
+| Config | `config.yaml` (runtime) | `include/config.h` + `secrets.h` (compile-time) |
+| Tests / CI | ruff + pytest (`MockRenderer`) | `pio run` compile (+ native unit test) |
 
-```
-airplanes.live  ──fetch──▶  source.py  ──rank──▶  nearest.py  ──compose──▶  layout.py  ──push──▶  renderer.py ──▶ HUB75
-   /v2/point         Aircraft[]          top-N by haversine        PIL image            MatrixRenderer
-```
+Same airplanes.live URL on both: `GET /v2/point/{lat}/{lon}/{radius_nm}` where
+`radius_nm = ceil(distance_km / 1.852)`.
 
-- `source.py` — `fetch_nearby(lat, lon, radius_km)` → `list[Aircraft]` from
-  `GET /v2/point/{lat}/{lon}/{radius_nm}` (radius in nautical miles).
-- `nearest.py` — single-pass haversine, sort, top-N.
-- `renderer.py` — abstract `Renderer`; `MatrixRenderer` wraps
-  `rgbmatrix.RGBMatrix`, `MockRenderer` records draw calls for tests.
-- `layout.py` — PIL composition of one row per aircraft, horizontal scroll for
-  long rows, double-buffered push.
-- `main.py` — argparse, YAML config, poll/render loop, graceful SIGTERM.
+## Layout
+
+Four 16 px rows, one aircraft per row: callsign on the left (white, scrolls if
+it overflows), altitude (`FLnnn`/`GND`, green) + distance (`Nkm`, amber) on the
+right, and a small 8-direction heading arrow. More than four aircraft rotate
+across pages; a 1 px red corner dot marks stale data.
+
+## Subprojects
+
+- **[`pi/`](pi/)** — Python implementation. See [`pi/README.md`](pi/README.md).
+- **[`esp32/`](esp32/)** — Arduino/PlatformIO firmware. See
+  [`esp32/README.md`](esp32/README.md).
 
 ## Hardware
 
-Raspberry Pi Zero W 1.1 + one HUB75 64×128 panel + a **5 V / 4 A** panel supply.
-See [docs/hardware.md](docs/hardware.md) for pinout, the Adafruit Bonnet vs
-direct-wiring trade-off, power, and the root/GPIO requirement.
-
-## Install (on the Pi)
-
-```bash
-git clone https://github.com/disclaimer8/flight-board-piesp.git
-cd flight-board-piesp
-./scripts/install.sh          # builds rpi-rgb-led-matrix + bindings, sets up .venv
-cp config.example.yaml config.yaml   # then edit lat/lon, panel, brightness
-```
-
-`rgbmatrix` is built from source by `install.sh` and is **not** a pip
-dependency — it only exists on the Pi.
-
-## Run
-
-```bash
-# GPIO needs root:
-sudo .venv/bin/python -m flight_board.main --config config.yaml
-```
-
-Or install the service so it starts at boot:
-
-```bash
-sudo cp systemd/flight-board.service /etc/systemd/system/
-sudo systemctl enable --now flight-board
-```
-
-## Develop / test (any host, no panel)
-
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-ruff check .
-pytest -q
-```
-
-Host tests use `MockRenderer`, so no LED matrix or Pi is needed — this is what
-CI runs (`.github/workflows/ci.yml`).
-
-## Configuration
-
-All knobs live in `config.yaml` (copy of `config.example.yaml`): observer
-`lat`/`lon`, `distance_km`, `refresh_sec`, `top_n`, `source_url`, panel
-`rows`/`cols`/`chain`, `brightness`, and `gpio_slowdown`.
-
-## Fonts
-
-Bundled bitmap fonts under `src/flight_board/fonts/` (via
-[rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix)):
-
-- **tom-thumb.bdf** (3×5) — © Brian Swetland / Robey Pointer, **MIT**.
-- **5x8.bdf**, **4x6.bdf** — Markus Kuhn's misc-fixed, **public domain**
-  ("Public domain font. Share and enjoy.").
-
-A bare filename in `config.yaml`'s `font_main` / `font_compact` is resolved from
-this bundled directory first, then as a filesystem path.
+Both drive the same 64×128 HUB75 panel from a dedicated **5 V / 4 A** supply
+with a **common ground**. Shared panel/power notes:
+[`docs/hardware.md`](docs/hardware.md). Controller-specific wiring:
+[`pi/docs/hardware.md`](pi/docs/hardware.md),
+[`esp32/docs/hardware.md`](esp32/docs/hardware.md).
 
 ## License
 

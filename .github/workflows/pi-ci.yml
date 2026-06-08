@@ -1,9 +1,14 @@
-name: CI
+name: pi-ci
 
 on:
   push:
-    branches: [main]
+    paths: ['pi/**', '.github/workflows/pi-ci.yml']
   pull_request:
+    paths: ['pi/**', '.github/workflows/pi-ci.yml']
+
+defaults:
+  run:
+    working-directory: pi
 
 jobs:
   lint-and-test:
