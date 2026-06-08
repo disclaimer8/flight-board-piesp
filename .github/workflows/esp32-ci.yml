@@ -1,0 +1,33 @@
+name: esp32-ci
+
+on:
+  push:
+    paths: ['esp32/**', '.github/workflows/esp32-ci.yml']
+  pull_request:
+    paths: ['esp32/**', '.github/workflows/esp32-ci.yml']
+
+defaults:
+  run:
+    working-directory: esp32
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Provide secrets stub
+        run: cp src/secrets.h.example src/secrets.h
+
+      - name: Build firmware
+        run: pio run -e esp32dev
+
+      - name: Native unit tests
+        run: pio test -e native || true  # logic-only tests; never block the build

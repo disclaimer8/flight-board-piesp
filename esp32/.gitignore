@@ -1,0 +1,5 @@
+# PlatformIO build output
+.pio/
+
+# Real secrets — copy from src/secrets.h.example, never commit
+src/secrets.h
