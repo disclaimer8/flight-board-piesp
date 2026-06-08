@@ -5,12 +5,14 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=pi
-# GPIO/DMA for the HUB75 panel needs elevated privileges. The matrix library
-# drops to a normal user after init when drop_privileges is enabled; here we
-# keep it simple and run the unit as root-capable pi via the panel's own path.
-WorkingDirectory=/home/pi/flight-board-piesp
-ExecStart=/home/pi/flight-board-piesp/.venv/bin/python -m flight_board.main --config /home/pi/flight-board-piesp/config.yaml
+# GPIO/DMA for the HUB75 panel needs root. rpi-rgb-led-matrix accesses /dev/mem,
+# so this unit runs as root.
+User=root
+# Paths assume the repo was cloned to $HOME/flight-board-piesp and the Pi side
+# lives in its pi/ subdirectory. Adjust the home segment (here: /home/pi) to the
+# user that cloned it.
+WorkingDirectory=/home/pi/flight-board-piesp/pi
+ExecStart=/home/pi/flight-board-piesp/pi/.venv/bin/python -m flight_board.main --config /home/pi/flight-board-piesp/pi/config.yaml
 Restart=on-failure
 RestartSec=5
 # Let the process shut down cleanly on stop (SIGTERM is handled in main.py).
