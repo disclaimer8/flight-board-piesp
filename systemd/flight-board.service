@@ -1,0 +1,21 @@
+[Unit]
+Description=Flight board (HUB75 nearest-aircraft display)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+# GPIO/DMA for the HUB75 panel needs elevated privileges. The matrix library
+# drops to a normal user after init when drop_privileges is enabled; here we
+# keep it simple and run the unit as root-capable pi via the panel's own path.
+WorkingDirectory=/home/pi/flight-board-piesp
+ExecStart=/home/pi/flight-board-piesp/.venv/bin/python -m flight_board.main --config /home/pi/flight-board-piesp/config.yaml
+Restart=on-failure
+RestartSec=5
+# Let the process shut down cleanly on stop (SIGTERM is handled in main.py).
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

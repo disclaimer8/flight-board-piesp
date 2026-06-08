@@ -1,0 +1,5 @@
+# Placeholder for BDF/TTF fonts.
+#
+# Drop a bitmap font here and point config.yaml `font:` at it, e.g.
+# spleen-5x8.bdf or tom-thumb.bdf from rpi-rgb-led-matrix/fonts. With no font
+# configured, the board falls back to Pillow's built-in bitmap font.

@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Local config (copied from config.example.yaml)
+config.yaml
+
+# PlatformIO leftovers (in case this shares a workspace with the ESP32 sibling)
+.pio/
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/

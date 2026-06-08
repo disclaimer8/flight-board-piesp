@@ -1,0 +1,42 @@
+# Flight board configuration. Copy to config.yaml and edit.
+
+# Observer location (decimal degrees) — the board ranks aircraft by distance
+# from here.
+lat: 50.1100
+lon: 8.6820
+
+# Reception radius for the airplanes.live query, in kilometres. Converted to
+# nautical miles for the API (rounded up).
+distance_km: 50
+
+# How often to re-poll the API (seconds). Be polite: airplanes.live asks for
+# <= 1 request/second; 15 s is plenty for a board.
+refresh_sec: 15
+
+# Number of nearest aircraft to display.
+top_n: 8
+
+# Data source base URL. Point at a mirror if you run one.
+source_url: "https://api.airplanes.live"
+
+# Optional BDF/TTF font path; omit to use Pillow's built-in bitmap font.
+# font: "src/flight_board/fonts/spleen-5x8.bdf"
+
+# Frames per second for horizontal scrolling between fetches.
+scroll_fps: 20
+
+# HUB75 panel geometry. A single 64x128 panel = 64 rows, 128 cols.
+panel:
+  rows: 64
+  cols: 128
+  chain: 1
+  parallel: 1
+  # See rpi-rgb-led-matrix docs: "regular", "adafruit-hat",
+  # "adafruit-hat-pwm" (Bonnet/HAT with the GPIO4<->GPIO18 solder bridge).
+  hardware_mapping: "regular"
+
+# Panel brightness, 0-100.
+brightness: 60
+
+# GPIO timing slowdown. Pi Zero (slow) usually wants 1-2; faster Pis need more.
+gpio_slowdown: 2
