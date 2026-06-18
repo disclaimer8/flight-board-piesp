@@ -7,23 +7,24 @@ name = "flight-board-piesp"
 version = "0.1.0"
 description = "Flight board for Raspberry Pi Zero W + HUB75 64x128 LED matrix"
 readme = "README.md"
-# Pi Zero W 1.1 is armv6l; 3.9 is the realistic floor for the Raspberry Pi OS
-# wheels available for that arch. The floors below are the newest releases that
-# still publish Python 3.9 wheels — on 3.10+ pip transparently pulls the truly
-# latest (Pillow 12, etc.) since those exclude 3.9 via requires-python.
-requires-python = ">=3.9"
+# Target: Raspberry Pi OS Trixie (Debian 13) on a Pi Zero W (armv6l), which
+# ships Python 3.13. We no longer pretend to support 3.9.
+# Pillow stays at Trixie's SYSTEM version (apt python3-pil, used via the venv's
+# --system-site-packages) — bumping it would force a slow Pillow C-build on
+# armv6. requests/pyyaml are pure-Python (pip pulls latest cleanly on 3.13).
+requires-python = ">=3.11"
 dependencies = [
-    "requests>=2.32.5",
-    "pillow>=11.3.0",
-    "pyyaml>=6.0.3",
+    "requests>=2.34.2",
+    "pillow>=11.1.0",   # Trixie system Pillow; do NOT raise (armv6 build)
+    "pyyaml>=6.0.2",
 ]
 
 [project.optional-dependencies]
 # rgbmatrix is NOT here: it is built from source on the Pi only, via
 # scripts/install.sh. Keeping it out lets CI install deps on a host with no
-# panel.
+# panel. Dev tools are pure-Python — keep them at the latest.
 dev = [
-    "pytest>=8.4.2",
+    "pytest>=9.1.0",
     "responses>=0.26.1",
     "ruff>=0.15.17",
 ]
@@ -36,7 +37,7 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py311"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
