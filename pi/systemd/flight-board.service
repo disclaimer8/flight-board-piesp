@@ -11,6 +11,9 @@ User=root
 # Paths assume the repo was cloned to $HOME/flight-board-piesp and the Pi side
 # lives in its pi/ subdirectory. Adjust the home segment (here: /home/pi) to the
 # user that cloned it.
+# Pin the CPU to max clock — a bit-banged display wants steady frequency, and
+# 'ondemand' can downclock during brief idle dips and jitter the refresh.
+ExecStartPre=-/bin/sh -c 'echo performance > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'
 WorkingDirectory=/home/pi/flight-board-piesp/pi
 ExecStart=/home/pi/flight-board-piesp/pi/.venv/bin/python -m flight_board.main --config /home/pi/flight-board-piesp/pi/config.yaml
 Restart=on-failure
