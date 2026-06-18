@@ -1,0 +1,17 @@
+# Dependabot dependency updates.
+# Covers what Dependabot supports natively: Python (pi/) and GitHub Actions.
+# ESP32 PlatformIO lib_deps are NOT supported by Dependabot (nor Renovate
+# natively) — bump those manually in esp32/platformio.ini.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/pi"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies"]
