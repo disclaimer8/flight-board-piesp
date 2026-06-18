@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from flight_board.layout import (
     Layout,
@@ -97,6 +97,32 @@ def test_compose_zero_aircraft_is_empty():
 def test_compose_one_aircraft_one_row():
     page = [Aircraft(callsign="BAW1", alt_ft=35000, track=90, dist_km=5)]
     assert lit_rows(mk_layout().compose(page)) == 1
+
+
+def test_compact_list_draws_position_arrow_from_bearing(monkeypatch):
+    layout = mk_layout()
+    calls = []
+
+    def record_arrow(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    monkeypatch.setattr(layout, "_draw_arrow", record_arrow)
+
+    layout.compose([Aircraft(callsign="BAW1", alt_ft=35000, track=270, bearing_deg=90, dist_km=5)])
+
+    assert len(calls) == 1
+    assert calls[0][1]["octant"] == 2
+
+
+def test_north_arrow_has_wide_head():
+    image = Image.new("RGB", (11, 11), (0, 0, 0))
+    layout = mk_layout()
+    layout._draw_arrow(ImageDraw.Draw(image), 5, 5, 0, (255, 255, 255))
+
+    for x in range(3, 8):
+        assert image.getpixel((x, 3)) == (255, 255, 255)
+    for y in range(4, 8):
+        assert image.getpixel((5, y)) == (255, 255, 255)
 
 
 def test_compose_four_aircraft_four_rows():

@@ -15,9 +15,39 @@ static const int kPageRows = PANEL_RES_Y / kCell;  // 4 at 64 px
 static const int kCharW = 6;
 static const int kCharH = 8;
 
-// Screen-space tip direction per octant (y grows downward, N is up).
-static const int kVX[8] = {0, 1, 1, 1, 0, -1, -1, -1};
-static const int kVY[8] = {-1, -1, 0, 1, 1, 1, 0, -1};
+// Pixel-art heading arrow per octant (dx, dy from arrow centre; y grows down,
+// N is up). Mirrors pi/src/flight_board/layout.py _ARROW_PIXELS.
+struct ArrowPoint {
+    int8_t dx;
+    int8_t dy;
+};
+static const ArrowPoint kArrowN[] = {
+    {0, -4}, {-1, -3}, {0, -3}, {1, -3}, {-2, -2}, {-1, -2}, {0, -2},
+    {1, -2}, {2, -2}, {0, -1}, {0, 0}, {0, 1}, {0, 2}};
+static const ArrowPoint kArrowNE[] = {
+    {2, -4}, {1, -4}, {2, -3}, {3, -3}, {0, -3}, {1, -2},
+    {2, -2}, {-1, -2}, {0, -1}, {1, -1}, {-1, 0}};
+static const ArrowPoint kArrowE[] = {
+    {4, 0}, {3, -1}, {3, 0}, {3, 1}, {2, -2}, {2, -1}, {2, 0},
+    {2, 1}, {2, 2}, {1, 0}, {0, 0}, {-1, 0}, {-2, 0}};
+static const ArrowPoint kArrowSE[] = {
+    {2, 4}, {1, 4}, {2, 3}, {3, 3}, {0, 3}, {1, 2},
+    {2, 2}, {-1, 2}, {0, 1}, {1, 1}, {-1, 0}};
+static const ArrowPoint kArrowS[] = {
+    {0, 4}, {-1, 3}, {0, 3}, {1, 3}, {-2, 2}, {-1, 2}, {0, 2},
+    {1, 2}, {2, 2}, {0, 1}, {0, 0}, {0, -1}, {0, -2}};
+static const ArrowPoint kArrowSW[] = {
+    {-2, 4}, {-1, 4}, {-2, 3}, {-3, 3}, {0, 3}, {-1, 2},
+    {-2, 2}, {1, 2}, {0, 1}, {-1, 1}, {1, 0}};
+static const ArrowPoint kArrowW[] = {
+    {-4, 0}, {-3, -1}, {-3, 0}, {-3, 1}, {-2, -2}, {-2, -1}, {-2, 0},
+    {-2, 1}, {-2, 2}, {-1, 0}, {0, 0}, {1, 0}, {2, 0}};
+static const ArrowPoint kArrowNW[] = {
+    {-2, -4}, {-1, -4}, {-2, -3}, {-3, -3}, {0, -3}, {-1, -2},
+    {-2, -2}, {1, -2}, {0, -1}, {-1, -1}, {1, 0}};
+static const ArrowPoint* const kArrows[8] = {
+    kArrowN, kArrowNE, kArrowE, kArrowSE, kArrowS, kArrowSW, kArrowW, kArrowNW};
+static const int kArrowLen[8] = {13, 11, 13, 11, 13, 11, 13, 11};
 
 int rows() { return kPageRows; }
 
@@ -42,11 +72,9 @@ static std::string callsignText(const Aircraft& a) {
 }
 
 static void drawArrow(MatrixPanel_I2S_DMA& p, int cx, int cy, int oct, uint16_t color) {
-    int dx = kVX[oct], dy = kVY[oct], r = 3;
-    p.drawLine(cx - dx * r, cy - dy * r, cx + dx * r, cy + dy * r, color);
-    // Small arrowhead: two pixels flanking the tip.
-    p.drawPixel(cx + dx * r - dx, cy + dy * r, color);
-    p.drawPixel(cx + dx * r, cy + dy * r - dy, color);
+    for (int i = 0; i < kArrowLen[oct]; i++) {
+        p.drawPixel(cx + kArrows[oct][i].dx, cy + kArrows[oct][i].dy, color);
+    }
 }
 
 void drawSplash(MatrixPanel_I2S_DMA& p, double lat, double lon) {
@@ -96,8 +124,9 @@ void drawPage(MatrixPanel_I2S_DMA& p, const std::vector<Aircraft>& page,
         int altW = (int)alt.size() * kCharW;
         int distW = (int)strlen(dist) * kCharW;
         int gap = kCharW;
-        int arrowW = a.hasTrack ? 9 : 0;
-        int rightW = altW + gap + distW + arrowW;
+        bool hasArrow = a.hasBearing || a.hasTrack;
+        int arrowW = hasArrow ? 8 : 0;
+        int rightW = arrowW + altW + gap + distW;
         int dataX = PANEL_RES_X - rightW;
         int colW = dataX - 1;
 
@@ -119,8 +148,13 @@ void drawPage(MatrixPanel_I2S_DMA& p, const std::vector<Aircraft>& page,
             p.fillRect(colW, top, PANEL_RES_X - colW, kCell, 0);
         }
 
-        // Altitude + distance (right), then heading arrow.
+        // Heading arrow (points toward the aircraft), then altitude + distance.
         int x = dataX;
+        if (hasArrow) {
+            double bearing = a.hasBearing ? a.bearingDeg : a.track;
+            drawArrow(p, x + arrowW / 2, top + kCell / 2, octant(bearing), cCall);
+            x += arrowW;
+        }
         p.setTextColor(cAlt);
         p.setCursor(x, yText);
         p.print(alt.c_str());
@@ -128,10 +162,6 @@ void drawPage(MatrixPanel_I2S_DMA& p, const std::vector<Aircraft>& page,
         p.setTextColor(cDist);
         p.setCursor(x, yText);
         p.print(dist);
-        x += distW;
-        if (a.hasTrack) {
-            drawArrow(p, x + arrowW / 2, top + kCell / 2, octant(a.track), cCall);
-        }
     }
 
     if (stale) {

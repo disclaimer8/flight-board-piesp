@@ -43,6 +43,12 @@
 #define FRAME_MS 50     // redraw cadence (~20 fps) for scrolling callsigns
 #define STALE_SEC 45    // mark data stale if no successful poll within N seconds
 
+// ---- Color order ----
+// If your panel displays incorrect colors (e.g. green instead of blue),
+// you can configure the color order here without changing your wiring.
+// Options: "RGB", "RBG", "GRB", "GBR", "BRG", "BGR"
+#define COLOR_ORDER "RGB"
+
 // ---- Colors (R, G, B) — expanded into panel.color565(...) ----
 #define CALLSIGN_RGB 255, 255, 255  // white
 #define ALT_RGB 0, 180, 80          // muted green

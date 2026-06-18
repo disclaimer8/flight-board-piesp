@@ -82,7 +82,19 @@ Host tests use `MockRenderer`, so no LED matrix or Pi is needed — this is what
 All knobs live in `config.yaml` (copy of `config.example.yaml`): observer
 `lat`/`lon`, `distance_km`, `refresh_sec`, `top_n`, `rotate_sec`, `source_url`,
 `font_main`/`font_compact`, `colors`, `error_indicator`, panel
-`rows`/`cols`/`chain`, `brightness`, and `gpio_slowdown`.
+`rows`/`cols`/`chain`/`hardware_mapping`/`led_rgb_sequence`, `brightness`, and
+`gpio_slowdown`. On Pi Zero W, `pwm_bits` and `limit_refresh_rate_hz` can cap
+the matrix refresh load at the cost of some color depth or refresh headroom.
+
+For the direct GPIO wiring used by this build, set:
+
+```yaml
+panel:
+  hardware_mapping: "regular"
+  led_rgb_sequence: "RGB"
+pwm_bits: 7
+limit_refresh_rate_hz: 120
+```
 
 ## Fonts
 

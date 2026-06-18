@@ -19,9 +19,12 @@ Three ways to connect HUB75 to the Pi:
 
 | Option | Pros | Notes |
 | --- | --- | --- |
-| **Electrodragon "RGB Matrix Adapter for RaspberryPi"** (this build's board) | 40-pin Pi header passthrough, HUB75 IDC, screw terminal + barrel jack for panel 5 V, level-shifted | Active-3 / "adafruit-hat"-class layout — **not** an Adafruit Bonnet. Use `hardware_mapping: "adafruit-hat-pwm"` and verify the pin map below (see note). |
+| **Electrodragon "RGB Matrix Adapter for RaspberryPi"** (this build's board) | 40-pin Pi header passthrough, HUB75 IDC, screw terminal + barrel jack for panel 5 V, level-shifted | Active-3 / "adafruit-hat"-class layout — **not** an Adafruit Bonnet. Start with `hardware_mapping: "adafruit-hat"` and verify the pin map below. |
 | **Adafruit RGB Matrix Bonnet/HAT** | Clean, level-shifted, one HUB75 connector, optional PWM-quality mod | `hardware_mapping: "adafruit-hat"` (or `"adafruit-hat-pwm"` with the GPIO4↔GPIO18 solder bridge) |
 | **Direct GPIO wiring** | No extra board | Fiddly; 3.3 V logic into a 5 V panel works in practice but is out of spec; use `hardware_mapping: "regular"` |
+
+> Current build note: after testing the bonnet/adapter path, this unit is wired
+> directly to the Pi and should use `hardware_mapping: "regular"`.
 
 ### This build: Electrodragon Active-3-style adapter
 
@@ -29,14 +32,16 @@ The board in this build is the **Electrodragon "RGB Matrix Adapter for
 RaspberryPi"** (screw terminal + barrel jack, *not* an Adafruit Bonnet). It maps
 the HUB75 lines onto the same GPIOs the Adafruit HAT uses, so:
 
-- Start with **`hardware_mapping: "adafruit-hat-pwm"`** in `config.yaml`.
-- These Active-3-style adapters route **OE on GPIO18** (the PWM line) like the
-  HAT, so the `-pwm` mapping is correct **without** the Bonnet's GPIO4↔GPIO18
-  solder bridge — that mod is for stock Bonnets only.
+- Start with **`hardware_mapping: "adafruit-hat"`** in `config.yaml`.
+- Use `"adafruit-hat-pwm"` only if the adapter routes **OE on GPIO18**. On this
+  build, direct panel tests showed `"adafruit-hat"` drives the top half
+  correctly while `"adafruit-hat-pwm"` does not.
 - If the panel shows ghosting, wrong colors, or a shifted image, the adapter's
   address/colour lines differ from stock: switch to `"adafruit-hat"`, then fall
   back to `"regular"` and confirm against the wiring table below. Pin-map
   mismatches are the usual cause — adjust the mapping, not the wiring.
+- If only the lower half is red while the upper half has correct colors, inspect
+  the HUB75 `R2`/`G2`/`B2` lines and the ribbon connector orientation/contact.
 - Feed panel 5 V through the adapter's **screw terminal / barrel jack** from the
   external PSU; the Pi is powered separately (see Power above).
 
@@ -75,6 +80,10 @@ a CPU core — see the upstream README's "Improving flicker" section.
 
 ## Tuning on a Pi Zero W 1.1
 
-- The Zero is slow; keep `gpio_slowdown: 1` or `2`.
+- The Zero is slow; keep `gpio_slowdown: 1` or `2` unless the panel needs a
+  little more settling time.
+- Use `pwm_bits: 7` and `limit_refresh_rate_hz: 120` as a practical starting
+  point for lower CPU load. Increase them only if the panel visibly flickers or
+  color banding is unacceptable.
 - Expect a real ceiling on refresh from the single-core armv6l CPU — keep
-  `top_n` modest and `scroll_fps` around 20.
+  `top_n` modest and reduce `scroll_fps` if scrolling load is visible.

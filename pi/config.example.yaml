@@ -27,7 +27,7 @@ source_url: "https://api.airplanes.live"
 # then treated as a filesystem path. Omit to use Pillow's built-in bitmap font.
 # Bundled: tom-thumb.bdf (3x5), 4x6.bdf, 5x8.bdf.
 font_main: "5x8.bdf"        # callsigns
-font_compact: "tom-thumb.bdf"  # altitude / distance column
+font_compact: "4x6.bdf"       # altitude / distance column
 
 # Colors as [r, g, b] (0-255) or "#rrggbb".
 colors:
@@ -42,15 +42,23 @@ error_indicator: true
 # Frames per second for horizontal scrolling between fetches.
 scroll_fps: 20
 
+# Pi Zero W tuning for hzeller/rpi-rgb-led-matrix. Lower pwm_bits reduces CPU
+# and color depth; limit_refresh_rate_hz caps the panel refresh loop. Set the
+# limit to 0 or remove it to let the library run unconstrained.
+pwm_bits: 7
+limit_refresh_rate_hz: 120
+
 # HUB75 panel geometry. A single 64x128 panel = 64 rows, 128 cols.
 panel:
   rows: 64
   cols: 128
   chain: 1
   parallel: 1
-  # See rpi-rgb-led-matrix docs: "regular", "adafruit-hat",
-  # "adafruit-hat-pwm" (Bonnet/HAT with the GPIO4<->GPIO18 solder bridge).
+  # Direct GPIO wiring uses "regular".
   hardware_mapping: "regular"
+  # RGB color sequence. Some panels use non-standard wiring like "RBG" or "BGR".
+  # Options: "RGB", "RBG", "GRB", "GBR", "BRG", "BGR". Default is "RGB".
+  led_rgb_sequence: "RGB"
 
 # Panel brightness, 0-100.
 brightness: 60

@@ -20,5 +20,7 @@ struct Aircraft {
 
     double lat = 0.0;
     double lon = 0.0;
-    double distKm = 0.0;  // filled by rankNearest()
+    double distKm = 0.0;      // filled by rankNearest()
+    double bearingDeg = 0.0;  // filled by rankNearest() — bearing from observer to aircraft
+    bool hasBearing = false;
 };

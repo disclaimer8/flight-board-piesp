@@ -39,6 +39,38 @@ _OCTANT_VEC = [
     (0, -1), (1, -1), (1, 0), (1, 1),
     (0, 1), (-1, 1), (-1, 0), (-1, -1),
 ]
+_ARROW_PIXELS = [
+    [
+        (0, -4), (-1, -3), (0, -3), (1, -3),
+        (-2, -2), (-1, -2), (0, -2), (1, -2), (2, -2),
+        (0, -1), (0, 0), (0, 1), (0, 2),
+    ],
+    [
+        (2, -4), (1, -4), (2, -3), (3, -3), (0, -3),
+        (1, -2), (2, -2), (-1, -2), (0, -1), (1, -1), (-1, 0),
+    ],
+    [
+        (4, 0), (3, -1), (3, 0), (3, 1),
+        (2, -2), (2, -1), (2, 0), (2, 1), (2, 2),
+        (1, 0), (0, 0), (-1, 0), (-2, 0),
+    ],
+    [(2, 4), (1, 4), (2, 3), (3, 3), (0, 3), (1, 2), (2, 2), (-1, 2), (0, 1), (1, 1), (-1, 0)],
+    [
+        (0, 4), (-1, 3), (0, 3), (1, 3),
+        (-2, 2), (-1, 2), (0, 2), (1, 2), (2, 2),
+        (0, 1), (0, 0), (0, -1), (0, -2),
+    ],
+    [(-2, 4), (-1, 4), (-2, 3), (-3, 3), (0, 3), (-1, 2), (-2, 2), (1, 2), (0, 1), (-1, 1), (1, 0)],
+    [
+        (-4, 0), (-3, -1), (-3, 0), (-3, 1),
+        (-2, -2), (-2, -1), (-2, 0), (-2, 1), (-2, 2),
+        (-1, 0), (0, 0), (1, 0), (2, 0),
+    ],
+    [
+        (-2, -4), (-1, -4), (-2, -3), (-3, -3), (0, -3),
+        (-1, -2), (-2, -2), (1, -2), (0, -1), (-1, -1), (1, 0),
+    ],
+]
 
 
 def heading_octant(track: float) -> int:
@@ -184,12 +216,9 @@ class Layout:
         color: tuple[int, int, int],
         r: int = 3,
     ) -> None:
-        dx, dy = _OCTANT_VEC[octant]
-        tip = (cx + dx * r, cy + dy * r)
-        tail = (cx - dx * r, cy - dy * r)
-        draw.line([tail, tip], fill=color)
-        # Tiny arrowhead: two pixels flanking the tip, perpendicular to travel.
-        draw.point([(tip[0] - dx, tip[1]), (tip[0], tip[1] - dy)], fill=color)
+        del r
+        points = [(cx + dx, cy + dy) for dx, dy in _ARROW_PIXELS[octant]]
+        draw.point(points, fill=color)
 
     def _draw_callsign(
         self,
@@ -236,27 +265,28 @@ class Layout:
             data_dist = f"{ac.dist_km:.0f}km"
             alt_w = self._text_width(draw, data_alt, self.font_compact)
             dist_w = self._text_width(draw, data_dist, self.font_compact)
-            arrow_w = 9 if ac.track is not None else 0
+            arrow_w = 8 if (ac.bearing_deg is not None or ac.track is not None) else 0
             gap = 3
-            right_block = alt_w + gap + dist_w + arrow_w
+            right_block = arrow_w + alt_w + gap + dist_w
             data_x = self.width - right_block
 
             callsign = ac.callsign or ac.registration or ac.hex or "?"
             self._draw_callsign(image, callsign, cell_top, data_x - 2, scroll_offset)
 
             x = data_x
-            draw.text((x, y), data_alt, font=self.font_compact, fill=self.colors["alt"])
-            x += alt_w + gap
-            draw.text((x, y), data_dist, font=self.font_compact, fill=self.colors["dist"])
-            x += dist_w
-            if ac.track is not None:
+            bearing = ac.bearing_deg if ac.bearing_deg is not None else ac.track
+            if bearing is not None:
                 self._draw_arrow(
                     draw,
                     cx=x + arrow_w // 2,
                     cy=cell_top + CELL_HEIGHT // 2,
-                    octant=heading_octant(ac.track),
+                    octant=heading_octant(bearing),
                     color=self.colors["callsign"],
                 )
+                x += arrow_w
+            draw.text((x, y), data_alt, font=self.font_compact, fill=self.colors["alt"])
+            x += alt_w + gap
+            draw.text((x, y), data_dist, font=self.font_compact, fill=self.colors["dist"])
 
         if stale and self.error_indicator:
             draw.point((self.width - 1, 0), fill=self.colors["error"])

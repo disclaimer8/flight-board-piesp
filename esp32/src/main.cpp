@@ -3,6 +3,7 @@
 #include <WiFi.h>
 
 #include <vector>
+#include <cstring>
 
 #include "config.h"
 #include "layout.h"
@@ -42,8 +43,29 @@ void setup() {
     delay(200);
     Serial.println("\n[flight-board-esp32] boot");
 
+    // Resolve color channel pin mapping based on COLOR_ORDER configuration
+    int8_t r1 = PIN_R1, g1 = PIN_G1, b1 = PIN_B1;
+    int8_t r2 = PIN_R2, g2 = PIN_G2, b2 = PIN_B2;
+
+    if (strcmp(COLOR_ORDER, "RBG") == 0) {
+        g1 = PIN_B1; b1 = PIN_G1;
+        g2 = PIN_B2; b2 = PIN_G2;
+    } else if (strcmp(COLOR_ORDER, "BGR") == 0) {
+        r1 = PIN_B1; b1 = PIN_R1;
+        r2 = PIN_B2; b2 = PIN_R2;
+    } else if (strcmp(COLOR_ORDER, "GRB") == 0) {
+        r1 = PIN_G1; g1 = PIN_R1;
+        r2 = PIN_G2; g2 = PIN_R2;
+    } else if (strcmp(COLOR_ORDER, "GBR") == 0) {
+        r1 = PIN_B1; g1 = PIN_R1; b1 = PIN_G1;
+        r2 = PIN_B2; g2 = PIN_R2; b2 = PIN_G2;
+    } else if (strcmp(COLOR_ORDER, "BRG") == 0) {
+        r1 = PIN_G1; g1 = PIN_B1; b1 = PIN_R1;
+        r2 = PIN_G2; g2 = PIN_B2; b2 = PIN_R2;
+    }
+
     HUB75_I2S_CFG::i2s_pins pins = {
-        PIN_R1, PIN_G1, PIN_B1, PIN_R2, PIN_G2, PIN_B2,
+        r1, g1, b1, r2, g2, b2,
         PIN_A,  PIN_B,  PIN_C,  PIN_D,  PIN_E,  PIN_LAT, PIN_OE, PIN_CLK};
     HUB75_I2S_CFG mxconfig(PANEL_RES_X, PANEL_RES_Y, PANEL_CHAIN, pins);
     mxconfig.double_buff = true;  // tear-free: draw to back buffer, then flip

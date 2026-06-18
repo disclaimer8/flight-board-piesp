@@ -54,6 +54,11 @@ def build_matrix_options(config: dict[str, Any]) -> Any:
     options.brightness = int(config.get("brightness", 60))
     options.gpio_slowdown = int(config.get("gpio_slowdown", 2))
     options.hardware_mapping = str(panel.get("hardware_mapping", "regular"))
+    options.led_rgb_sequence = str(panel.get("led_rgb_sequence", "RGB"))
+    if "pwm_bits" in config:
+        options.pwm_bits = int(config["pwm_bits"])
+    if "limit_refresh_rate_hz" in config:
+        options.limit_refresh_rate_hz = int(config["limit_refresh_rate_hz"])
     options.drop_privileges = False
     return options
 

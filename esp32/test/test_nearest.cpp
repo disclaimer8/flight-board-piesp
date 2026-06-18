@@ -60,6 +60,28 @@ void test_rank_negative_topn_keeps_all() {
     TEST_ASSERT_EQUAL_INT(2, (int)fleet.size());
 }
 
+void test_bearing_cardinal_directions() {
+    TEST_ASSERT_TRUE(std::fabs(bearingDegrees(0.0, 0.0, 1.0, 0.0) - 0.0) < 0.1);
+    TEST_ASSERT_TRUE(std::fabs(bearingDegrees(0.0, 0.0, 0.0, 1.0) - 90.0) < 0.1);
+    TEST_ASSERT_TRUE(std::fabs(bearingDegrees(0.0, 0.0, -1.0, 0.0) - 180.0) < 0.1);
+    TEST_ASSERT_TRUE(std::fabs(bearingDegrees(0.0, 0.0, 0.0, -1.0) - 270.0) < 0.1);
+}
+
+void test_rank_fills_bearing() {
+    std::vector<Aircraft> fleet = {at(50.1, 8.0, "north")};
+    rankNearest(fleet, 50.0, 8.0, -1);
+    TEST_ASSERT_TRUE(fleet[0].hasBearing);
+    TEST_ASSERT_TRUE(std::fabs(fleet[0].bearingDeg - 0.0) < 0.1);
+}
+
+void test_rank_excludes_on_ground() {
+    std::vector<Aircraft> fleet = {at(50.0, 8.0, "ground"), at(50.1, 8.0, "airborne")};
+    fleet[0].onGround = true;
+    rankNearest(fleet, 50.0, 8.0, 5);
+    TEST_ASSERT_EQUAL_INT(1, (int)fleet.size());
+    TEST_ASSERT_EQUAL_STRING("airborne", fleet[0].hex.c_str());
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_radius_km_to_nm_rounds_up);
@@ -68,5 +90,8 @@ int main(int, char**) {
     RUN_TEST(test_haversine_symmetric);
     RUN_TEST(test_rank_sorts_and_caps);
     RUN_TEST(test_rank_negative_topn_keeps_all);
+    RUN_TEST(test_bearing_cardinal_directions);
+    RUN_TEST(test_rank_fills_bearing);
+    RUN_TEST(test_rank_excludes_on_ground);
     return UNITY_END();
 }

@@ -18,6 +18,15 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(a))
 
 
+def bearing_degrees(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Initial bearing from ``(lat1, lon1)`` to ``(lat2, lon2)`` in degrees."""
+    rlat1, rlat2 = math.radians(lat1), math.radians(lat2)
+    dlon = math.radians(lon2 - lon1)
+    y = math.sin(dlon) * math.cos(rlat2)
+    x = math.cos(rlat1) * math.sin(rlat2) - math.sin(rlat1) * math.cos(rlat2) * math.cos(dlon)
+    return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
+
+
 def nearest(
     aircraft: list[Aircraft],
     lat: float,
@@ -29,9 +38,11 @@ def nearest(
     Distance is computed exactly once per aircraft (single pass), stored on
     ``dist_km``, and the sort key reuses that value rather than recomputing.
     """
-    for ac in aircraft:
+    airborne = [ac for ac in aircraft if not ac.on_ground]
+    for ac in airborne:
         ac.dist_km = haversine_km(lat, lon, ac.lat, ac.lon)
-    ranked = sorted(aircraft, key=lambda ac: ac.dist_km)
+        ac.bearing_deg = bearing_degrees(lat, lon, ac.lat, ac.lon)
+    ranked = sorted(airborne, key=lambda ac: ac.dist_km)
     if top_n < 0:
         return ranked
     return ranked[:top_n]

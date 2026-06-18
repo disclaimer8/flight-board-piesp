@@ -69,3 +69,4 @@ sibling's "pure core + thin Arduino" split):
   (generic/empty UA → HTTP 403); see `source.USER_AGENT`.
 - North-up / distance-only board — no heading hardware involved.
 - `config.yaml` is gitignored; edit a copy of `config.example.yaml`.
+- **LED RGB sequence (color order) configuration** — Added support for custom color ordering (like "RBG", "BGR", "GRB", etc.) to correct display color anomalies without changing physical wiring. Configurable via `led_rgb_sequence` in `config.yaml` on Pi, or `#define COLOR_ORDER` in `config.h` on ESP32.

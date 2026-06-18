@@ -43,6 +43,7 @@ class Aircraft:
     lon: float = 0.0
     on_ground: bool = False
     dist_km: float = field(default=0.0)
+    bearing_deg: float | None = field(default=None)
 
 
 def radius_km_to_nm(radius_km: float) -> int:
