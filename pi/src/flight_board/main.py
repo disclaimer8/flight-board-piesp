@@ -18,6 +18,7 @@ import argparse
 import logging
 import signal
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -79,12 +80,19 @@ def run(
     print_frames: bool = False,
 ) -> None:
     """Main poll/rank/render loop. Returns when a signal clears ``_running``."""
-    lat = float(config["lat"])
-    lon = float(config["lon"])
+    try:
+        lat = float(config["lat"])
+        lon = float(config["lon"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("config must set numeric 'lat' and 'lon'") from exc
+    if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
+        raise ValueError(f"lat/lon out of range: {lat}, {lon}")
     distance_km = float(config.get("distance_km", 50))
     refresh_sec = float(config.get("refresh_sec", 15))
     rotate_sec = float(config.get("rotate_sec", 8))
     top_n = int(config.get("top_n", 8))
+    if top_n < 0:
+        raise ValueError(f"top_n must be >= 0, got {top_n}")
     source_url = str(config.get("source_url", "https://api.airplanes.live"))
     scroll_fps = float(config.get("scroll_fps", 20))
 
@@ -105,28 +113,46 @@ def run(
 
     frame_interval = 1.0 / scroll_fps if scroll_fps > 0 else 0.05
 
-    aircraft: list[Aircraft] = []
-    have_data = False
-    stale = False
-    last_fetch = 0.0
+    # The blocking HTTP poll runs in a background thread; the render loop only
+    # reads a snapshot, so the panel never freezes mid-fetch — this is the
+    # CLAUDE.md "don't block the render path" contract (the poll used to be
+    # inline, stalling scrolling for the whole round-trip every refresh_sec).
+    state_lock = threading.Lock()
+    shared: dict[str, Any] = {"aircraft": [], "have_data": False, "stale": False}
+
+    def poll_worker() -> None:
+        last_fetch = 0.0
+        while _running:
+            now = time.monotonic()
+            if last_fetch == 0.0 or now - last_fetch >= refresh_sec:
+                last_fetch = now
+                try:
+                    raw = fetcher()
+                    ranked = nearest(raw, lat, lon, top_n)
+                    with state_lock:
+                        shared["aircraft"] = ranked
+                        shared["have_data"] = True
+                        shared["stale"] = False
+                    log.info("fetched %d aircraft, showing %d", len(raw), len(ranked))
+                except (requests.RequestException, ValueError) as exc:
+                    with state_lock:
+                        shared["stale"] = shared["have_data"]  # stale only after first data
+                    print(f"poll failed: {exc}", file=sys.stderr)
+            time.sleep(0.25)
+
     scroll_offset = 0
     start = time.monotonic()
+    worker = threading.Thread(target=poll_worker, name="poll", daemon=True)
+    worker.start()
 
     layout.render_splash(renderer, lat, lon, "loading...")
     try:
         while _running:
             now = time.monotonic()
-            if now - last_fetch >= refresh_sec or last_fetch == 0.0:
-                try:
-                    raw = fetcher()
-                    aircraft = nearest(raw, lat, lon, top_n)
-                    have_data = True
-                    stale = False
-                    log.info("fetched %d aircraft, showing %d", len(raw), len(aircraft))
-                except (requests.RequestException, ValueError) as exc:
-                    stale = have_data  # only "stale" once we've shown something
-                    print(f"poll failed: {exc}", file=sys.stderr)
-                last_fetch = now
+            with state_lock:
+                aircraft = shared["aircraft"]
+                have_data = shared["have_data"]
+                stale = shared["stale"]
 
             if not have_data:
                 # First poll has no data yet: keep the splash up another cycle.
@@ -144,6 +170,7 @@ def run(
             scroll_offset += 1
             time.sleep(frame_interval)
     finally:
+        worker.join(timeout=2.0)
         renderer.clear()
 
 

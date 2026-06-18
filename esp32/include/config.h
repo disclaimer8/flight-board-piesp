@@ -33,8 +33,9 @@
 
 // ---- Data source ----
 #define DISTANCE_KM 30.0
-// Query radius in nautical miles = ceil(DISTANCE_KM / 1.852), same as the Pi.
-#define RADIUS_NM ((int)((DISTANCE_KM) / 1.852 + 0.999))
+// Query radius (NM) is computed at runtime via radiusKmToNm(DISTANCE_KM) — the
+// same ceil() helper the unit tests + the Pi use. (The old RADIUS_NM macro used
+// a +0.999 truncation that could diverge from a true ceil.)
 #define TOP_N 8  // rank this many; the layout shows 4 per page
 
 // ---- Timing ----

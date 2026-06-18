@@ -82,6 +82,10 @@ class MatrixRenderer(Renderer):
         self._canvas = self._matrix.SwapOnVSync(self._canvas)
 
     def clear(self) -> None:
+        # Blank the OFF-screen canvas AND make it visible, else the panel keeps
+        # showing the last frame on shutdown (SIGTERM contract = blank panel).
+        self._canvas.Clear()
+        self._canvas = self._matrix.SwapOnVSync(self._canvas)
         self._canvas.Clear()
 
 

@@ -30,6 +30,7 @@ bool fetchNearby(double lat, double lon, int radiusNm, std::vector<Aircraft>& ou
         return false;
     }
     https.setUserAgent("flight-board-esp32/0.1");
+    https.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);  // a 301 must not silently kill polling
     https.setConnectTimeout(8000);
     https.setTimeout(8000);
 
