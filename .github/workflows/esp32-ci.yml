@@ -6,6 +6,10 @@ on:
   pull_request:
     paths: ['esp32/**', '.github/workflows/esp32-ci.yml']
 
+# Least privilege: this workflow only reads the repo to build and test.
+permissions:
+  contents: read
+
 defaults:
   run:
     working-directory: esp32
