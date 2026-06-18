@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "labels": ["dependencies"],
+  "platformio": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "description": "Group all GitHub Actions bumps into one PR.",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    },
+    {
+      "description": "Group Adafruit ESP32 support libraries together.",
+      "matchManagers": ["platformio"],
+      "matchPackageNames": ["adafruit/**"],
+      "groupName": "adafruit libraries"
+    }
+  ]
+}

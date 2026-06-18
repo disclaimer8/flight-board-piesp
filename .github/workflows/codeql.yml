@@ -1,0 +1,63 @@
+name: codeql
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly full scan (Mondays 04:23 UTC) so new advisories surface even with no pushes.
+    - cron: '23 4 * * 1'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Python (pi/): no build needed — CodeQL extracts the source directly.
+          - language: python
+            build-mode: none
+          # C/C++ (esp32/): firmware must be compiled so CodeQL can trace the
+          # xtensa toolchain invocations PlatformIO drives.
+          - language: c-cpp
+            build-mode: manual
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python (PlatformIO)
+        if: matrix.language == 'c-cpp'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        if: matrix.language == 'c-cpp'
+        run: pip install platformio
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Build ESP32 firmware (manual build mode)
+        if: matrix.language == 'c-cpp'
+        working-directory: esp32
+        run: |
+          cp src/secrets.h.example src/secrets.h
+          pio run -e esp32dev
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
