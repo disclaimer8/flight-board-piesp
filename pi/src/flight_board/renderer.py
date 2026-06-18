@@ -76,7 +76,11 @@ class MatrixRenderer(Renderer):
         self.height = self._matrix.height
 
     def set_image(self, image: Image.Image) -> None:
-        self._canvas.SetImage(image.convert("RGB"))
+        # The layout already produces RGB; only convert if a caller passes
+        # something else (avoids a full-frame copy every frame on ARMv6).
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        self._canvas.SetImage(image)
 
     def swap(self) -> None:
         self._canvas = self._matrix.SwapOnVSync(self._canvas)

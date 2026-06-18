@@ -15,7 +15,9 @@ the panel and exit 0.
 from __future__ import annotations
 
 import argparse
+import gc
 import logging
+import os
 import signal
 import sys
 import threading
@@ -121,6 +123,13 @@ def run(
     shared: dict[str, Any] = {"aircraft": [], "have_data": False, "stale": False}
 
     def poll_worker() -> None:
+        # De-prioritize this thread so the render loop and the rgbmatrix RT
+        # refresh thread preempt it on the single ARMv6 core (the JSON parse +
+        # ranking hold the GIL; keep them out of the refresh thread's way).
+        try:
+            os.nice(10)
+        except OSError:
+            pass
         last_fetch = 0.0
         while _running:
             now = time.monotonic()
@@ -144,6 +153,12 @@ def run(
     start = time.monotonic()
     worker = threading.Thread(target=poll_worker, name="poll", daemon=True)
     worker.start()
+
+    # Move startup objects out of GC's scan set and ease its cadence: a gen-2
+    # sweep mid-frame is a visible hitch on the single ARMv6 core. The hot path
+    # has no reference cycles, so refcounting reclaims frames deterministically.
+    gc.collect()
+    gc.freeze()
 
     layout.render_splash(renderer, lat, lon, "loading...")
     try:

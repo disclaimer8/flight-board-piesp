@@ -198,6 +198,12 @@ class Layout:
         self.colors = merged
         self.error_indicator = error_indicator
         self.rows = max(1, height // CELL_HEIGHT)
+        # Frame cache: when the page data is unchanged AND nothing scrolls, the
+        # frame is pixel-identical, so render() skips recompose + push entirely
+        # (the matrix keeps the last swapped buffer). On a single-core ARMv6 this
+        # is the dominant CPU win — full recompose rasterizes glyphs every frame.
+        self._cache_key: object = None
+        self._has_scroll = False
 
     def _text_width(self, draw: ImageDraw.ImageDraw, text: str, font) -> int:
         return int(draw.textlength(text, font=font))
@@ -227,7 +233,8 @@ class Layout:
         cell_top: int,
         col_w: int,
         scroll_offset: int,
-    ) -> None:
+    ) -> bool:
+        """Draw the callsign; return True if it overflows and is scrolling."""
         col_w = max(1, col_w)
         measure = ImageDraw.Draw(image)
         text_w = self._text_width(measure, text, self.font_main)
@@ -235,7 +242,7 @@ class Layout:
         color = self.colors["callsign"]
         if text_w <= col_w:
             measure.text((1, y), text, font=self.font_main, fill=color)
-            return
+            return False
         # Overflowing: render into a clipped column image so the scroll stays put.
         sub = Image.new("RGB", (col_w, CELL_HEIGHT), (0, 0, 0))
         sd = ImageDraw.Draw(sub)
@@ -245,6 +252,7 @@ class Layout:
         sd.text((sx, sub_y), text, font=self.font_main, fill=color)
         sd.text((sx + cycle, sub_y), text, font=self.font_main, fill=color)
         image.paste(sub, (0, cell_top))
+        return True
 
     def compose(
         self,
@@ -256,6 +264,7 @@ class Layout:
         """Build the frame image for one page of (up to ``rows``) aircraft."""
         image = Image.new("RGB", (self.width, self.height), (0, 0, 0))
         draw = ImageDraw.Draw(image)
+        has_scroll = False
 
         for i, ac in enumerate(page[: self.rows]):
             cell_top = i * CELL_HEIGHT
@@ -271,7 +280,8 @@ class Layout:
             data_x = self.width - right_block
 
             callsign = ac.callsign or ac.registration or ac.hex or "?"
-            self._draw_callsign(image, callsign, cell_top, data_x - 2, scroll_offset)
+            if self._draw_callsign(image, callsign, cell_top, data_x - 2, scroll_offset):
+                has_scroll = True
 
             x = data_x
             bearing = ac.bearing_deg if ac.bearing_deg is not None else ac.track
@@ -290,6 +300,7 @@ class Layout:
 
         if stale and self.error_indicator:
             draw.point((self.width - 1, 0), fill=self.colors["error"])
+        self._has_scroll = has_scroll
         return image
 
     def compose_splash(self, lat: float, lon: float, message: str = "loading...") -> Image.Image:
@@ -316,9 +327,35 @@ class Layout:
         *,
         stale: bool = False,
     ) -> None:
-        """Compose a page and push+swap it onto ``renderer``."""
-        renderer.set_image(self.compose(page, scroll_offset, stale=stale))
-        renderer.swap()
+        """Compose a page and push+swap it — but skip both when the frame is
+        provably identical to the last one (same data, nothing scrolling)."""
+        key = self._frame_key(page, stale)
+        if key != self._cache_key:
+            # Data/page/stale changed: recompose (sets _has_scroll) and push.
+            renderer.set_image(self.compose(page, scroll_offset, stale=stale))
+            renderer.swap()
+            self._cache_key = key
+        elif self._has_scroll:
+            # Same data but a callsign is scrolling: only then redraw per frame.
+            renderer.set_image(self.compose(page, scroll_offset, stale=stale))
+            renderer.swap()
+        # else: identical static frame — the panel already shows it; do nothing.
+
+    def _frame_key(self, page: list[Aircraft], stale: bool) -> object:
+        return (
+            stale,
+            tuple(
+                (
+                    ac.callsign or ac.registration or ac.hex or "?",
+                    ac.on_ground,
+                    ac.alt_ft,
+                    None if ac.dist_km is None else round(ac.dist_km),
+                    ac.bearing_deg,
+                    ac.track,
+                )
+                for ac in page[: self.rows]
+            ),
+        )
 
     def render_splash(self, renderer: Renderer, lat: float, lon: float, message: str) -> None:
         renderer.set_image(self.compose_splash(lat, lon, message))

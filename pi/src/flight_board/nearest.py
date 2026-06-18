@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import heapq
 import math
 
 from flight_board.source import Aircraft
@@ -39,10 +40,15 @@ def nearest(
     ``dist_km``, and the sort key reuses that value rather than recomputing.
     """
     airborne = [ac for ac in aircraft if not ac.on_ground]
+    # Distance for all (needed to rank), but bearing only for the survivors —
+    # ARMv6 VFP trig is slow, and we throw away all but top_n. (GIL-held in the
+    # poll thread, so shrinking this directly shrinks the per-poll flicker blip.)
     for ac in airborne:
         ac.dist_km = haversine_km(lat, lon, ac.lat, ac.lon)
-        ac.bearing_deg = bearing_degrees(lat, lon, ac.lat, ac.lon)
-    ranked = sorted(airborne, key=lambda ac: ac.dist_km)
     if top_n < 0:
-        return ranked
-    return ranked[:top_n]
+        ranked = sorted(airborne, key=lambda ac: ac.dist_km)
+    else:
+        ranked = heapq.nsmallest(top_n, airborne, key=lambda ac: ac.dist_km)
+    for ac in ranked:
+        ac.bearing_deg = bearing_degrees(lat, lon, ac.lat, ac.lon)
+    return ranked

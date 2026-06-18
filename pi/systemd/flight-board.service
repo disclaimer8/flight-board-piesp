@@ -15,6 +15,10 @@ WorkingDirectory=/home/pi/flight-board-piesp/pi
 ExecStart=/home/pi/flight-board-piesp/pi/.venv/bin/python -m flight_board.main --config /home/pi/flight-board-piesp/pi/config.yaml
 Restart=on-failure
 RestartSec=5
+# Single-core ARMv6: win the scheduler against background daemons. Safe vs the
+# rgbmatrix refresh thread (it runs SCHED_FIFO/RT and always preempts nice).
+Nice=-5
+CPUWeight=200
 # Let the process shut down cleanly on stop (SIGTERM is handled in main.py).
 KillSignal=SIGTERM
 TimeoutStopSec=10
